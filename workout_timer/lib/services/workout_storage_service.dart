@@ -1,5 +1,6 @@
 import 'dart:io';
 import 'dart:convert';
+import 'dart:typed_data';
 import 'package:path_provider/path_provider.dart';
 import 'package:flutter/services.dart' show rootBundle;
 import 'package:file_picker/file_picker.dart';
@@ -99,16 +100,24 @@ class WorkoutStorageService {
       final jsonString = json.encode(workout.toJson());
       final fileName = _sanitizeFileName(workout.name);
 
+      // Convert string to bytes for mobile platforms
+      final bytes = Uint8List.fromList(utf8.encode(jsonString));
+
       final path = await FilePicker.platform.saveFile(
         dialogTitle: 'Export Workout',
         fileName: '$fileName.json',
         type: FileType.custom,
         allowedExtensions: ['json'],
+        bytes: bytes, // Required for Android/iOS
       );
 
       if (path != null) {
-        final file = File(path);
-        await file.writeAsString(jsonString);
+        // On desktop platforms, path is returned and we need to write the file
+        if (Platform.isLinux || Platform.isWindows || Platform.isMacOS) {
+          final file = File(path);
+          await file.writeAsString(jsonString);
+        }
+        // On mobile platforms, the bytes are already saved by the picker
         return true;
       }
       return false;

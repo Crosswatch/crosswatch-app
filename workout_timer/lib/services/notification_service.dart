@@ -1,3 +1,5 @@
+import 'dart:io';
+import 'package:flutter/foundation.dart' show kIsWeb;
 import 'package:flutter_local_notifications/flutter_local_notifications.dart';
 
 class NotificationService {
@@ -5,26 +7,47 @@ class NotificationService {
   factory NotificationService() => _instance;
   NotificationService._internal();
 
-  final FlutterLocalNotificationsPlugin _notifications = FlutterLocalNotificationsPlugin();
+  final FlutterLocalNotificationsPlugin _notifications =
+      FlutterLocalNotificationsPlugin();
   bool _initialized = false;
 
   Future<void> initialize() async {
     if (_initialized) return;
 
-    const initializationSettingsLinux = LinuxInitializationSettings(
-      defaultActionName: 'Open workout',
-    );
+    // Platform-specific initialization
+    InitializationSettings? initializationSettings;
 
-    const initializationSettings = InitializationSettings(
-      linux: initializationSettingsLinux,
-    );
+    if (Platform.isAndroid) {
+      const androidSettings = AndroidInitializationSettings(
+        '@mipmap/ic_launcher',
+      );
+      initializationSettings = const InitializationSettings(
+        android: androidSettings,
+      );
+    } else if (Platform.isIOS) {
+      const iosSettings = DarwinInitializationSettings(
+        requestAlertPermission: true,
+        requestBadgePermission: true,
+        requestSoundPermission: true,
+      );
+      initializationSettings = const InitializationSettings(iOS: iosSettings);
+    } else if (Platform.isLinux) {
+      const linuxSettings = LinuxInitializationSettings(
+        defaultActionName: 'Open workout',
+      );
+      initializationSettings = const InitializationSettings(
+        linux: linuxSettings,
+      );
+    }
 
-    await _notifications.initialize(
-      initializationSettings,
-      onDidReceiveNotificationResponse: (NotificationResponse response) {
-        // Handle notification tap
-      },
-    );
+    if (initializationSettings != null) {
+      await _notifications.initialize(
+        initializationSettings,
+        onDidReceiveNotificationResponse: (NotificationResponse response) {
+          // Handle notification tap
+        },
+      );
+    }
 
     _initialized = true;
   }
@@ -35,18 +58,45 @@ class NotificationService {
   }) async {
     if (!_initialized) await initialize();
 
-    const notificationDetails = NotificationDetails(
-      linux: LinuxNotificationDetails(
-        urgency: LinuxNotificationUrgency.critical,
-      ),
-    );
+    NotificationDetails? notificationDetails;
 
-    await _notifications.show(
-      0, // notification id
-      'Next Exercise: $exerciseName',
-      description,
-      notificationDetails,
-    );
+    if (Platform.isAndroid) {
+      notificationDetails = const NotificationDetails(
+        android: AndroidNotificationDetails(
+          'workout_channel',
+          'Workout Notifications',
+          channelDescription:
+              'Notifications for workout exercises and transitions',
+          importance: Importance.high,
+          priority: Priority.high,
+          playSound: true,
+          enableVibration: true,
+        ),
+      );
+    } else if (Platform.isIOS) {
+      notificationDetails = const NotificationDetails(
+        iOS: DarwinNotificationDetails(
+          presentAlert: true,
+          presentBadge: true,
+          presentSound: true,
+        ),
+      );
+    } else if (Platform.isLinux) {
+      notificationDetails = const NotificationDetails(
+        linux: LinuxNotificationDetails(
+          urgency: LinuxNotificationUrgency.critical,
+        ),
+      );
+    }
+
+    if (notificationDetails != null) {
+      await _notifications.show(
+        0, // notification id
+        'Next Exercise: $exerciseName',
+        description,
+        notificationDetails,
+      );
+    }
   }
 
   Future<void> showTransitionNotification({
@@ -55,35 +105,89 @@ class NotificationService {
   }) async {
     if (!_initialized) await initialize();
 
-    const notificationDetails = NotificationDetails(
-      linux: LinuxNotificationDetails(
-        urgency: LinuxNotificationUrgency.normal,
-      ),
-    );
+    NotificationDetails? notificationDetails;
 
-    await _notifications.show(
-      0, // notification id
-      'Get Ready',
-      'Next: $nextExerciseName in ${secondsRemaining}s',
-      notificationDetails,
-    );
+    if (Platform.isAndroid) {
+      notificationDetails = const NotificationDetails(
+        android: AndroidNotificationDetails(
+          'workout_channel',
+          'Workout Notifications',
+          channelDescription:
+              'Notifications for workout exercises and transitions',
+          importance: Importance.defaultImportance,
+          priority: Priority.defaultPriority,
+          playSound: false,
+          enableVibration: false,
+        ),
+      );
+    } else if (Platform.isIOS) {
+      notificationDetails = const NotificationDetails(
+        iOS: DarwinNotificationDetails(
+          presentAlert: true,
+          presentBadge: false,
+          presentSound: false,
+        ),
+      );
+    } else if (Platform.isLinux) {
+      notificationDetails = const NotificationDetails(
+        linux: LinuxNotificationDetails(
+          urgency: LinuxNotificationUrgency.normal,
+        ),
+      );
+    }
+
+    if (notificationDetails != null) {
+      await _notifications.show(
+        0, // notification id
+        'Get Ready',
+        'Next: $nextExerciseName in ${secondsRemaining}s',
+        notificationDetails,
+      );
+    }
   }
 
   Future<void> showWorkoutCompleteNotification() async {
     if (!_initialized) await initialize();
 
-    const notificationDetails = NotificationDetails(
-      linux: LinuxNotificationDetails(
-        urgency: LinuxNotificationUrgency.normal,
-      ),
-    );
+    NotificationDetails? notificationDetails;
 
-    await _notifications.show(
-      0, // notification id
-      'Workout Complete!',
-      'Great job! You finished your workout.',
-      notificationDetails,
-    );
+    if (Platform.isAndroid) {
+      notificationDetails = const NotificationDetails(
+        android: AndroidNotificationDetails(
+          'workout_channel',
+          'Workout Notifications',
+          channelDescription:
+              'Notifications for workout exercises and transitions',
+          importance: Importance.defaultImportance,
+          priority: Priority.defaultPriority,
+          playSound: true,
+          enableVibration: true,
+        ),
+      );
+    } else if (Platform.isIOS) {
+      notificationDetails = const NotificationDetails(
+        iOS: DarwinNotificationDetails(
+          presentAlert: true,
+          presentBadge: true,
+          presentSound: true,
+        ),
+      );
+    } else if (Platform.isLinux) {
+      notificationDetails = const NotificationDetails(
+        linux: LinuxNotificationDetails(
+          urgency: LinuxNotificationUrgency.normal,
+        ),
+      );
+    }
+
+    if (notificationDetails != null) {
+      await _notifications.show(
+        0, // notification id
+        'Workout Complete!',
+        'Great job! You finished your workout.',
+        notificationDetails,
+      );
+    }
   }
 
   Future<void> cancelAll() async {
