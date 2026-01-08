@@ -46,5 +46,35 @@ app.*.map.json
 
 # Signing keys - NEVER commit these!
 /android/key.properties
+android/key.properties
+key.properties
 *.jks
 *.keystore
+*.p12
+*.pem
+*.pfx
+
+# API keys and secrets
+**/google-services.json
+**/GoogleService-Info.plist
+.env
+.env.*
+**/secrets.json
+**/credentials.json
+**/*secret*
+**/*password*
+**/*apikey*
+
+# Firebase and Google Cloud
+firebase.json
+.firebaserc
+google-services.json
+GoogleService-Info.plist
+
+# Local development
+local.properties
+gradle.properties
+
+# Keystores directory (if stored in project)
+keystores/
+.keystores/
