@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
+import 'dart:math' as math;
 import '../models/workout.dart';
 import '../models/workout_set.dart';
 import '../providers/workout_timer_provider.dart';
@@ -194,47 +195,64 @@ class _WorkoutTimerScreenContent extends StatelessWidget {
     
     return Column(
       children: [
-        // Circular progress indicator
-        SizedBox(
-          width: 250,
-          height: 250,
-          child: Stack(
-            fit: StackFit.expand,
-            children: [
-              CircularProgressIndicator(
-                value: provider.progress,
-                strokeWidth: 12,
-                backgroundColor: Colors.grey[300],
-                valueColor: AlwaysStoppedAnimation<Color>(color),
-              ),
-              Center(
-                child: Column(
-                  mainAxisSize: MainAxisSize.min,
-                  children: [
-                    Text(
-                      provider.remainingTimeFormatted,
-                      style: Theme.of(context).textTheme.displayLarge?.copyWith(
-                        fontWeight: FontWeight.bold,
-                        fontSize: 56,
-                      ),
-                    ),
-                    const SizedBox(height: 8),
-                    if (!isTransition && isReps) ...[
+        // Interactive circular progress indicator
+        GestureDetector(
+          onTapDown: (details) => _handleTimerTap(details, provider),
+          onPanUpdate: (details) => _handleTimerDrag(details, provider),
+          child: SizedBox(
+            width: 250,
+            height: 250,
+            child: Stack(
+              fit: StackFit.expand,
+              children: [
+                CircularProgressIndicator(
+                  value: provider.progress,
+                  strokeWidth: 12,
+                  backgroundColor: Colors.grey[300],
+                  valueColor: AlwaysStoppedAnimation<Color>(color),
+                ),
+                Center(
+                  child: Column(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
                       Text(
-                        '${exercise.set.value!.toInt()} reps',
-                        style: Theme.of(context).textTheme.titleLarge?.copyWith(
-                          color: Colors.grey[600],
+                        provider.remainingTimeFormatted,
+                        style: Theme.of(context).textTheme.displayLarge?.copyWith(
+                          fontWeight: FontWeight.bold,
+                          fontSize: 56,
                         ),
                       ),
+                      const SizedBox(height: 8),
+                      if (!isTransition && isReps) ...[
+                        Text(
+                          '${exercise.set.value!.toInt()} reps',
+                          style: Theme.of(context).textTheme.titleLarge?.copyWith(
+                            color: Colors.grey[600],
+                          ),
+                        ),
+                      ],
                     ],
-                  ],
+                  ),
                 ),
-              ),
-            ],
+              ],
+            ),
           ),
         ),
         
-        const SizedBox(height: 24),
+        const SizedBox(height: 16),
+        
+        // Restart button
+        OutlinedButton.icon(
+          onPressed: () => provider.restartCurrentTimer(),
+          icon: const Icon(Icons.restart_alt, size: 20),
+          label: const Text('Restart'),
+          style: OutlinedButton.styleFrom(
+            foregroundColor: color,
+            side: BorderSide(color: color),
+          ),
+        ),
+        
+        const SizedBox(height: 16),
         
         // Round indicator
         if (!isTransition && exercise.totalRounds > 1)
@@ -255,6 +273,38 @@ class _WorkoutTimerScreenContent extends StatelessWidget {
           ),
       ],
     );
+  }
+  
+  void _handleTimerTap(TapDownDetails details, WorkoutTimerProvider provider) {
+    final Offset localPosition = details.localPosition;
+    final Offset center = const Offset(125, 125); // Half of 250x250
+    
+    // Calculate angle from center (-π to π)
+    final dx = localPosition.dx - center.dx;
+    final dy = localPosition.dy - center.dy;
+    var angle = math.atan2(dy, dx);
+    
+    // Convert to 0-1 range (starting from top, going clockwise)
+    // Top is -π/2, so we adjust
+    angle = angle + math.pi / 2;
+    if (angle < 0) angle += 2 * math.pi;
+    
+    // Convert to progress (1.0 at top, 0.0 after full rotation)
+    final position = 1.0 - (angle / (2 * math.pi));
+    
+    provider.setTimerPosition(position);
+  }
+  
+  void _handleTimerDrag(DragUpdateDetails details, WorkoutTimerProvider provider) {
+    // For drag, we'll use a simpler approach - just use the vertical position
+    // This is easier than trying to calculate angles during drag
+    final dy = details.localPosition.dy;
+    
+    // Map vertical position (0-250) to timer position (1.0-0.0)
+    // Top = 1.0 (full time), Bottom = 0.0 (no time)
+    final position = 1.0 - (dy / 250).clamp(0.0, 1.0);
+    
+    provider.setTimerPosition(position);
   }
 
   Widget _buildManualCompletionDisplay(

@@ -142,6 +142,33 @@ class WorkoutTimerProvider extends ChangeNotifier {
     }
   }
   
+  /// Restart the current exercise/transition timer
+  void restartCurrentTimer() {
+    _remainingSeconds = _totalExerciseSeconds;
+    _lastCountdownSecond = -1;
+    notifyListeners();
+    
+    // Restart the timer if we were running
+    if (_state == TimerState.running) {
+      _startTimer();
+    }
+  }
+  
+  /// Set the timer to a specific position (0.0 to 1.0, where 0 is complete and 1 is start)
+  void setTimerPosition(double position) {
+    if (position < 0) position = 0;
+    if (position > 1) position = 1;
+    
+    _remainingSeconds = _totalExerciseSeconds * position;
+    _lastCountdownSecond = -1;
+    notifyListeners();
+    
+    // If running, restart the timer to continue from new position
+    if (_state == TimerState.running) {
+      _startTimer();
+    }
+  }
+  
   void skipToNext() {
     // Skip directly to next exercise's active phase
     if (_currentExerciseIndex < _exercises.length - 1) {
@@ -230,7 +257,20 @@ class WorkoutTimerProvider extends ChangeNotifier {
             _remainingSeconds = exercise.set.duration!;
           }
           _lastCountdownSecond = -1; // Reset countdown tracker
+          
+          // Cancel existing timer and restart after a delay to avoid audio collision
+          _timer?.cancel();
           notifyListeners();
+          
+          if (_state == TimerState.running) {
+            Future.delayed(const Duration(milliseconds: 1000), () {
+              if (_state == TimerState.running) {
+                // Subtract a tiny amount to ensure we don't start exactly on a whole second
+                _remainingSeconds -= 0.2;
+                _startTimer();
+              }
+            });
+          }
         } else {
           // Manual completion required - stop timer
           _timer?.cancel();
@@ -247,6 +287,10 @@ class WorkoutTimerProvider extends ChangeNotifier {
   void _moveToNextExercise() {
     _completedExercises++;
     
+    // IMPORTANT: Cancel the existing timer immediately to prevent it from continuing
+    // while we wait for the delay
+    _timer?.cancel();
+    
     if (_currentExerciseIndex < _exercises.length - 1) {
       // Notify about next exercise BEFORE transitioning
       final nextExercise = _exercises[_currentExerciseIndex + 1];
@@ -259,11 +303,14 @@ class WorkoutTimerProvider extends ChangeNotifier {
       _initializeExercise(_currentExerciseIndex);
       notifyListeners();
       
-      // Add a small delay before starting the next timer to avoid audio collision
+      // Add a 1-second delay before starting the next timer to avoid audio collision
       // with the completion sound
       if (_state == TimerState.running) {
         Future.delayed(const Duration(milliseconds: 1000), () {
           if (_state == TimerState.running) {
+            // Subtract a tiny amount to ensure we don't start exactly on a whole second
+            // which would immediately trigger a countdown beep
+            _remainingSeconds -= 0.2;
             _startTimer();
           }
         });
