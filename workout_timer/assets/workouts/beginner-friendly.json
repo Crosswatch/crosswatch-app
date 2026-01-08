@@ -1,0 +1,101 @@
+{
+  "name": "Beginner Friendly Routine",
+  "description": "A gentle introduction to fitness with low-impact exercises",
+  "sets": [
+    {
+      "name": "Warm-up",
+      "description": "Gentle movements to get started",
+      "sets": [
+        {
+          "name": "March in Place",
+          "description": "Lift knees gently, swing arms naturally",
+          "type": "time",
+          "value": 30,
+          "transitionTime": 10
+        },
+        {
+          "name": "Shoulder Rolls",
+          "description": "Roll shoulders backwards, then forwards",
+          "type": "time",
+          "value": 20,
+          "transitionTime": 5
+        },
+        {
+          "name": "Neck Stretches",
+          "description": "Gentle side-to-side head tilts",
+          "type": "time",
+          "value": 20,
+          "transitionTime": 5
+        }
+      ]
+    },
+    {
+      "name": "Main Workout",
+      "description": "Easy exercises, take your time",
+      "sets": [
+        {
+          "name": "Wall Push-ups",
+          "description": "Push-ups against a wall at arms length",
+          "type": "reps",
+          "value": 10,
+          "transitionTime": 10
+        },
+        {
+          "name": "Chair Squats",
+          "description": "Sit back into a chair, then stand",
+          "type": "reps",
+          "value": 10,
+          "transitionTime": 10
+        },
+        {
+          "name": "Standing Knee Raises",
+          "description": "Lift one knee at a time, hold onto something if needed",
+          "type": "reps",
+          "value": 10,
+          "transitionTime": 10
+        },
+        {
+          "name": "Wall Plank",
+          "description": "Hands on wall, body straight, hold",
+          "type": "time",
+          "value": 15,
+          "transitionTime": 10
+        },
+        {
+          "name": "Step Touches",
+          "description": "Step side to side, touch floor with opposite hand",
+          "type": "time",
+          "value": 30,
+          "transitionTime": 10
+        }
+      ]
+    },
+    {
+      "name": "Cool Down",
+      "description": "Gentle stretches to finish",
+      "sets": [
+        {
+          "name": "Standing Quad Stretch",
+          "description": "Hold one foot behind you, balance on the other",
+          "type": "time",
+          "value": 20,
+          "transitionTime": 5
+        },
+        {
+          "name": "Chest Opener",
+          "description": "Clasp hands behind back, lift chest",
+          "type": "time",
+          "value": 20,
+          "transitionTime": 5
+        },
+        {
+          "name": "Deep Breathing",
+          "description": "Slow, deep breaths in and out",
+          "type": "time",
+          "value": 30,
+          "transitionTime": 5
+        }
+      ]
+    }
+  ]
+}

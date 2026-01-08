@@ -1,0 +1,34 @@
+{
+  "name": "Rest Test Workout",
+  "description": "Test workout to verify rest periods work correctly",
+  "sets": [
+    {
+      "name": "Push-ups",
+      "description": "Do 10 push-ups",
+      "type": "reps",
+      "value": 10,
+      "rounds": 3,
+      "restBetweenRounds": 15,
+      "transitionTime": 5
+    },
+    {
+      "name": "Circuit",
+      "rounds": 2,
+      "restBetweenRounds": 30,
+      "sets": [
+        {
+          "name": "Jumping Jacks",
+          "type": "time",
+          "value": 20,
+          "transitionTime": 5
+        },
+        {
+          "name": "Squats",
+          "type": "reps",
+          "value": 15,
+          "transitionTime": 5
+        }
+      ]
+    }
+  ]
+}

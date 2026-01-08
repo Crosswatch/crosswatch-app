@@ -1,0 +1,96 @@
+{
+  "name": "Cindy - CrossFit Benchmark WOD",
+  "description": "Complete as many rounds as possible (AMRAP) in 20 minutes",
+  "sets": [
+    {
+      "name": "Warm-up",
+      "description": "Dynamic stretches and mobility",
+      "sets": [
+        {
+          "name": "Burpees",
+          "description": "Warm up with burpees",
+          "type": "reps",
+          "value": 5,
+          "transitionTime": 10
+        },
+        {
+          "name": "Air Squats",
+          "description": "Full depth squats",
+          "type": "reps",
+          "value": 10,
+          "transitionTime": 5
+        },
+        {
+          "name": "Arm Swings",
+          "description": "Dynamic shoulder warm-up",
+          "type": "time",
+          "value": 30,
+          "transitionTime": 5
+        }
+      ]
+    },
+    {
+      "name": "Cindy - AMRAP 20",
+      "description": "As many rounds as possible in 20 minutes",
+      "rounds": 20,
+      "restBetweenRounds": 0,
+      "sets": [
+        {
+          "name": "Pull-ups",
+          "description": "5 strict or kipping pull-ups",
+          "type": "reps",
+          "value": 5,
+          "transitionTime": 3
+        },
+        {
+          "name": "Push-ups",
+          "description": "10 chest-to-ground push-ups",
+          "type": "reps",
+          "value": 10,
+          "transitionTime": 3
+        },
+        {
+          "name": "Air Squats",
+          "description": "15 full depth squats",
+          "type": "reps",
+          "value": 15,
+          "transitionTime": 3
+        }
+      ]
+    },
+    {
+      "name": "Cool Down",
+      "description": "Active recovery and stretching",
+      "sets": [
+        {
+          "name": "Walk or Easy Jog",
+          "description": "Bring heart rate down",
+          "type": "time",
+          "value": 60,
+          "transitionTime": 10
+        },
+        {
+          "name": "Shoulder Stretch",
+          "description": "Stretch shoulders and chest",
+          "type": "time",
+          "value": 30,
+          "transitionTime": 5
+        },
+        {
+          "name": "Hip Flexor Stretch",
+          "description": "Lunge position, hold",
+          "type": "time",
+          "value": 30,
+          "transitionTime": 5
+        },
+        {
+          "name": "Cobra Stretch",
+          "description": "Lying back extension",
+          "type": "time",
+          "value": 30,
+          "transitionTime": 5
+        }
+      ]
+    }
+  ]
+}
