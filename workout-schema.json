@@ -1,0 +1,88 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://example.com/workout-schema.json",
+  "title": "Workout",
+  "description": "A workout consisting of nested sets of exercises",
+  "type": "object",
+  "properties": {
+    "name": {
+      "type": "string",
+      "description": "The name of the workout"
+    },
+    "description": {
+      "type": "string",
+      "description": "A description of the workout"
+    },
+    "sets": {
+      "type": "array",
+      "description": "An array of sets that make up this workout",
+      "items": {
+        "$ref": "#/$defs/set"
+      }
+    }
+  },
+  "required": ["name", "sets"],
+  "$defs": {
+    "set": {
+      "type": "object",
+      "properties": {
+        "name": {
+          "type": "string",
+          "description": "The name of this set or exercise"
+        },
+        "description": {
+          "type": "string",
+          "description": "A description of this set or exercise"
+        },
+        "type": {
+          "type": "string",
+          "enum": ["reps", "time"],
+          "description": "Whether this set is measured in repetitions or time"
+        },
+        "value": {
+          "type": "number",
+          "description": "The number of reps or seconds for this set",
+          "minimum": 0
+        },
+        "sets": {
+          "type": "array",
+          "description": "Nested sets within this set (for supersets, circuits, etc.)",
+          "items": {
+            "$ref": "#/$defs/set"
+          }
+        },
+        "rounds": {
+          "type": "integer",
+          "description": "Number of times to repeat the nested sets",
+          "minimum": 1,
+          "default": 1
+        },
+        "restBetweenRounds": {
+          "type": "number",
+          "description": "Rest time in seconds between rounds",
+          "minimum": 0
+        }
+      },
+      "required": ["name"],
+      "oneOf": [
+        {
+          "description": "A leaf set with reps or time",
+          "required": ["type", "value"],
+          "not": {
+            "required": ["sets"]
+          }
+        },
+        {
+          "description": "A container set with nested sets",
+          "required": ["sets"],
+          "not": {
+            "anyOf": [
+              { "required": ["type"] },
+              { "required": ["value"] }
+            ]
+          }
+        }
+      ]
+    }
+  }
+}

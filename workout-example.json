@@ -1,0 +1,94 @@
+{
+  "name": "Full Body HIIT Workout",
+  "description": "A high-intensity interval training workout targeting all major muscle groups",
+  "sets": [
+    {
+      "name": "Warm-up",
+      "description": "Light cardio to prepare the body",
+      "sets": [
+        {
+          "name": "Jumping Jacks",
+          "description": "Full body warm-up exercise",
+          "type": "time",
+          "value": 30
+        },
+        {
+          "name": "Arm Circles",
+          "description": "Loosen up shoulders",
+          "type": "time",
+          "value": 20
+        }
+      ]
+    },
+    {
+      "name": "Main Circuit",
+      "description": "High-intensity circuit to be repeated",
+      "rounds": 3,
+      "restBetweenRounds": 60,
+      "sets": [
+        {
+          "name": "Push-ups",
+          "description": "Standard push-ups with proper form",
+          "type": "reps",
+          "value": 15
+        },
+        {
+          "name": "Squats",
+          "description": "Bodyweight squats",
+          "type": "reps",
+          "value": 20
+        },
+        {
+          "name": "Plank",
+          "description": "Hold plank position",
+          "type": "time",
+          "value": 45
+        },
+        {
+          "name": "Mountain Climbers",
+          "description": "Fast-paced mountain climbers",
+          "type": "time",
+          "value": 30
+        }
+      ]
+    },
+    {
+      "name": "Superset - Upper Body",
+      "description": "Back-to-back exercises with no rest",
+      "rounds": 2,
+      "restBetweenRounds": 45,
+      "sets": [
+        {
+          "name": "Pike Push-ups",
+          "description": "Shoulder-focused push-up variation",
+          "type": "reps",
+          "value": 10
+        },
+        {
+          "name": "Tricep Dips",
+          "description": "Using a chair or bench",
+          "type": "reps",
+          "value": 12
+        }
+      ]
+    },
+    {
+      "name": "Cool Down",
+      "description": "Stretching and recovery",
+      "sets": [
+        {
+          "name": "Child's Pose",
+          "description": "Relaxing yoga pose",
+          "type": "time",
+          "value": 30
+        },
+        {
+          "name": "Hamstring Stretch",
+          "description": "Seated forward fold",
+          "type": "time",
+          "value": 30
+        }
+      ]
+    }
+  ]
+}
