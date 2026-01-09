@@ -60,8 +60,8 @@ class WorkoutTimerProvider extends ChangeNotifier {
   final NotificationService _notificationService = NotificationService();
   final AudioService _audioService = AudioService();
 
-  // Track last countdown second to avoid duplicate sounds
-  int _lastCountdownSecond = -1;
+  // Track last countdown to prevent sounds playing too close together
+  double _lastCountdownTime = -1;
 
   WorkoutTimerProvider(this.workout) {
     _notificationService.initialize();
@@ -102,9 +102,10 @@ class WorkoutTimerProvider extends ChangeNotifier {
   int get completedExercises => _completedExercises;
 
   String get remainingTimeFormatted {
-    final minutes = (_remainingSeconds / 60).floor();
-    final seconds = (_remainingSeconds % 60).ceil();
-    return '${minutes.toString().padLeft(2, '0')}:${seconds.toString().padLeft(2, '0')}';
+    final totalSeconds = _remainingSeconds.ceil();
+    final minutes = totalSeconds ~/ 60;
+    final seconds = totalSeconds % 60;
+    return '$minutes:${seconds.toString().padLeft(2, '0')}';
   }
 
   // Actions
@@ -148,7 +149,7 @@ class WorkoutTimerProvider extends ChangeNotifier {
   /// Restart the current exercise/transition timer
   void restartCurrentTimer() {
     _remainingSeconds = _totalExerciseSeconds;
-    _lastCountdownSecond = -1;
+    _lastCountdownTime = -1;
     notifyListeners();
 
     // Restart the timer if we were running
@@ -163,7 +164,7 @@ class WorkoutTimerProvider extends ChangeNotifier {
     if (position > 1) position = 1;
 
     _remainingSeconds = _totalExerciseSeconds * position;
-    _lastCountdownSecond = -1;
+    _lastCountdownTime = -1;
     notifyListeners();
 
     // If running, restart the timer to continue from new position
@@ -229,16 +230,25 @@ class WorkoutTimerProvider extends ChangeNotifier {
   // Private methods
   void _startTimer() {
     _timer?.cancel();
-    _lastCountdownSecond = -1;
     _timer = Timer.periodic(const Duration(milliseconds: 100), (timer) {
       if (_remainingSeconds > 0) {
-        // Play countdown sound BEFORE decrementing (so we beep at 5, 4, 3, 2, 1)
+        // Play countdown sound if:
+        // 1. We're in the last 5 seconds
+        // 2. We're at or crossing a whole second boundary
+        // 3. At least 0.9 seconds have passed since the last countdown sound
         final currentSecond = _remainingSeconds.ceil();
-        if (currentSecond <= 5 &&
-            currentSecond > 0 &&
-            currentSecond != _lastCountdownSecond) {
-          _lastCountdownSecond = currentSecond;
-          _playCountdownSound();
+        if (currentSecond <= 5 && currentSecond > 0) {
+          // Check if we should play a sound at this time
+          // We play when crossing a whole second AND enough time has passed
+          final timeSinceLastCountdown = _remainingSeconds - _lastCountdownTime;
+          if (_lastCountdownTime < 0 || timeSinceLastCountdown.abs() >= 0.9) {
+            // We're crossing into a new second and enough time has passed
+            if (_remainingSeconds <= currentSecond.toDouble() && 
+                _remainingSeconds > (currentSecond - 0.2)) {
+              _lastCountdownTime = currentSecond.toDouble();
+              _playCountdownSound();
+            }
+          }
         }
 
         _remainingSeconds -= 0.1;
@@ -278,7 +288,7 @@ class WorkoutTimerProvider extends ChangeNotifier {
             _totalExerciseSeconds = exercise.set.duration!;
             _remainingSeconds = exercise.set.duration!;
           }
-          _lastCountdownSecond = -1; // Reset countdown tracker
+          _lastCountdownTime = -1; // Reset countdown tracker
 
           // Cancel existing timer and restart after a delay to avoid audio collision
           _timer?.cancel();
@@ -375,7 +385,7 @@ class WorkoutTimerProvider extends ChangeNotifier {
     _phase = ExercisePhase.transition;
     _totalExerciseSeconds = exercise.set.effectiveTransitionTime;
     _remainingSeconds = exercise.set.effectiveTransitionTime;
-    _lastCountdownSecond = -1; // Reset countdown tracker
+    _lastCountdownTime = -1; // Reset countdown tracker
   }
 
   /// Start an exercise directly in active phase (used for navigation)
@@ -396,7 +406,7 @@ class WorkoutTimerProvider extends ChangeNotifier {
         _totalExerciseSeconds = exercise.set.duration!;
         _remainingSeconds = exercise.set.duration!;
       }
-      _lastCountdownSecond = -1; // Reset countdown tracker
+      _lastCountdownTime = -1; // Reset countdown tracker
     } else {
       // Manual completion - no timer
       _totalExerciseSeconds = 0;
@@ -429,16 +439,29 @@ class WorkoutTimerProvider extends ChangeNotifier {
       // Leaf set - add to exercises list
       final rounds = set.rounds ?? 1;
       for (int r = 1; r <= rounds; r++) {
+        // Determine transition time based on exercise type and round number
+        double transitionTime;
+        if (r > 1) {
+          // This is a repeat round of the same exercise - no transition time
+          transitionTime = 0;
+        } else if (set.type == SetType.reps && set.duration == null) {
+          // Rep-based exercise without timer - no transition time
+          transitionTime = 0;
+        } else {
+          // First round of a timed exercise - use the exercise's transition time
+          transitionTime = set.effectiveTransitionTime;
+        }
+        
         _exercises.add(
           WorkoutExercise(
-            set: set,
+            set: set.copyWith(transitionTime: transitionTime),
             currentRound: r,
             totalRounds: rounds,
             breadcrumb: breadcrumb,
           ),
         );
 
-        // Add rest period after each round (except the last) for leaf exercises too
+        // Add rest period after each round (except the last) for leaf exercises
         if (set.restBetweenRounds != null &&
             set.restBetweenRounds! > 0 &&
             r < rounds) {

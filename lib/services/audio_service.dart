@@ -17,9 +17,17 @@ class AudioService {
   String? _countdownFilePath;
 
   // For audioplayers method (Android, iOS, etc.)
-  final AudioPlayer _completePlayer = AudioPlayer();
-  final AudioPlayer _countdownPlayer = AudioPlayer();
+  // Use a pool of players for overlapping sounds
+  final List<AudioPlayer> _countdownPlayers = [];
+  final List<AudioPlayer> _completePlayers = [];
+  int _countdownPlayerIndex = 0;
+  int _completePlayerIndex = 0;
+  static const int _playerPoolSize = 5; // Allow up to 5 overlapping sounds
   bool _useAudioPlayers = false;
+  
+  // Keep sources ready for reuse
+  Source? _completeSource;
+  Source? _countdownSource;
 
   /// Initialize audio service
   Future<void> initialize() async {
@@ -79,13 +87,79 @@ class AudioService {
 
   /// Initialize audioplayers for cross-platform support
   Future<void> _initializeAudioPlayers() async {
-    // Pre-cache audio sources
-    await _completePlayer.setSource(AssetSource('sounds/complete.oga'));
-    await _countdownPlayer.setSource(AssetSource('sounds/countdown.oga'));
-
-    // Set release mode to stop when complete
-    await _completePlayer.setReleaseMode(ReleaseMode.stop);
-    await _countdownPlayer.setReleaseMode(ReleaseMode.stop);
+    print('AudioService: Initializing audio players...');
+    
+    // Prepare sources
+    _completeSource = AssetSource('sounds/complete.oga');
+    _countdownSource = AssetSource('sounds/countdown.oga');
+    
+    // Create a pool of players for overlapping sounds
+    for (int i = 0; i < _playerPoolSize; i++) {
+      final countdownPlayer = AudioPlayer();
+      final completePlayer = AudioPlayer();
+      
+      await countdownPlayer.setPlayerMode(PlayerMode.lowLatency);
+      await completePlayer.setPlayerMode(PlayerMode.lowLatency);
+      
+      await countdownPlayer.setReleaseMode(ReleaseMode.stop);
+      await completePlayer.setReleaseMode(ReleaseMode.stop);
+      
+      await countdownPlayer.setVolume(1.0);
+      await completePlayer.setVolume(1.0);
+      
+      // Configure audio context to mix with background audio without requesting focus
+      await countdownPlayer.setAudioContext(
+        AudioContext(
+          iOS: AudioContextIOS(
+            category: AVAudioSessionCategory.ambient,
+            options: {AVAudioSessionOptions.mixWithOthers},
+          ),
+          android: AudioContextAndroid(
+            isSpeakerphoneOn: false,
+            stayAwake: false,
+            contentType: AndroidContentType.sonification,
+            usageType: AndroidUsageType.game,
+            audioFocus: AndroidAudioFocus.none, // Don't request focus
+          ),
+        ),
+      );
+      
+      await completePlayer.setAudioContext(
+        AudioContext(
+          iOS: AudioContextIOS(
+            category: AVAudioSessionCategory.ambient,
+            options: {AVAudioSessionOptions.mixWithOthers},
+          ),
+          android: AudioContextAndroid(
+            isSpeakerphoneOn: false,
+            stayAwake: false,
+            contentType: AndroidContentType.sonification,
+            usageType: AndroidUsageType.game,
+            audioFocus: AndroidAudioFocus.none, // Don't request focus
+          ),
+        ),
+      );
+      
+      _countdownPlayers.add(countdownPlayer);
+      _completePlayers.add(completePlayer);
+    }
+    
+    // Preload audio by playing at zero volume, then stopping
+    // This ensures the first real play is instant
+    print('AudioService: Preloading audio files...');
+    await _countdownPlayers[0].setVolume(0.0);
+    await _countdownPlayers[0].play(_countdownSource!);
+    await Future.delayed(const Duration(milliseconds: 100));
+    await _countdownPlayers[0].stop();
+    await _countdownPlayers[0].setVolume(1.0);
+    
+    await _completePlayers[0].setVolume(0.0);
+    await _completePlayers[0].play(_completeSource!);
+    await Future.delayed(const Duration(milliseconds: 100));
+    await _completePlayers[0].stop();
+    await _completePlayers[0].setVolume(1.0);
+    
+    print('AudioService: Audio players initialized successfully');
   }
 
   /// Play a notification beep (for exercise completions)
@@ -94,9 +168,15 @@ class AudioService {
 
     try {
       if (_useAudioPlayers) {
-        await _completePlayer.stop();
-        await _completePlayer.seek(Duration.zero);
-        await _completePlayer.resume();
+        // Use round-robin player selection
+        final player = _completePlayers[_completePlayerIndex];
+        _completePlayerIndex = (_completePlayerIndex + 1) % _playerPoolSize;
+        
+        // Stop first if already playing, then play
+        if (player.state == PlayerState.playing) {
+          await player.stop();
+        }
+        await player.play(_completeSource!);
       } else {
         // Use paplay for Linux
         if (_completeFilePath != null) {
@@ -107,20 +187,30 @@ class AudioService {
         }
       }
     } catch (e) {
-      // Silently fail - audio is not critical
       print('Failed to play notification: $e');
     }
   }
 
   /// Play a countdown beep (short click for 3-2-1 countdown)
   Future<void> playCountdown() async {
-    if (!_soundEnabled) return;
+    if (!_soundEnabled) {
+      print('AudioService: Sound disabled');
+      return;
+    }
 
     try {
       if (_useAudioPlayers) {
-        await _countdownPlayer.stop();
-        await _countdownPlayer.seek(Duration.zero);
-        await _countdownPlayer.resume();
+        // Use round-robin player selection
+        final player = _countdownPlayers[_countdownPlayerIndex];
+        print('AudioService: Playing countdown on player ${_countdownPlayerIndex}, state: ${player.state}');
+        _countdownPlayerIndex = (_countdownPlayerIndex + 1) % _playerPoolSize;
+        
+        // Stop first if already playing, then play
+        if (player.state == PlayerState.playing) {
+          await player.stop();
+        }
+        await player.play(_countdownSource!);
+        print('AudioService: Countdown play() completed');
       } else {
         // Use paplay for Linux
         if (_countdownFilePath != null) {
@@ -131,7 +221,6 @@ class AudioService {
         }
       }
     } catch (e) {
-      // Silently fail
       print('Failed to play countdown: $e');
     }
   }
@@ -146,7 +235,11 @@ class AudioService {
 
   /// Dispose audio players
   Future<void> dispose() async {
-    await _completePlayer.dispose();
-    await _countdownPlayer.dispose();
+    for (final player in _countdownPlayers) {
+      await player.dispose();
+    }
+    for (final player in _completePlayers) {
+      await player.dispose();
+    }
   }
 }
