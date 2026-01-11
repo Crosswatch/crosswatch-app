@@ -1,13 +1,14 @@
 {
-    "name": "workout_timer",
-    "short_name": "workout_timer",
+    "name": "Crosswatch - Workout Timer",
+    "short_name": "Crosswatch",
     "start_url": ".",
     "display": "standalone",
     "background_color": "#0175C2",
     "theme_color": "#0175C2",
-    "description": "A cross-platform workout timer app with nested set support",
+    "description": "CrossFit workout timer with nested sets, AI import from URLs, and smart exercise tracking",
     "orientation": "portrait-primary",
     "prefer_related_applications": false,
+    "categories": ["health", "fitness", "lifestyle"],
     "icons": [
         {
             "src": "icons/Icon-192.png",

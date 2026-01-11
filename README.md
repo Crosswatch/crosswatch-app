@@ -2,10 +2,16 @@
 
 A cross-platform workout timer app built with Flutter, designed for high-intensity interval training (HIIT), CrossFit, and circuit workouts. Features nested workout structures, audio cues, notifications, and support for both time-based and rep-based exercises.
 
+## Live Demo
+
+**🌐 Try it now:** [crosswatch-app.github.io](https://crosswatch.github.io/crosswatch-app/)
+
+The web version works as a Progressive Web App (PWA) - install it to your home screen for an app-like experience!
+
 ## Features
 
 ### Core Functionality
-- **Cross-Platform Support**: Runs on Android, iOS, Linux, Windows, and macOS
+- **Cross-Platform Support**: Runs on Android, iOS, Linux, Windows, macOS, and Web (PWA)
 - **Flexible Workout Structure**: 
   - Nested workout sets (e.g., circuits within circuits)
   - Time-based exercises (e.g., 30 seconds of jumping jacks)
@@ -24,10 +30,11 @@ A cross-platform workout timer app built with Flutter, designed for high-intensi
 - **Notifications**: Desktop and mobile notifications for exercise transitions
 - **Screen Wake Lock**: Keeps screen on during active workouts
 - **Workout Management**:
-  - Pre-loaded example workouts
-  - Create and edit workouts with intuitive builder
-  - Import/export workouts as JSON
-  - Duplicate and delete workouts
+   - Pre-loaded example workouts
+   - Create and edit workouts with intuitive builder
+   - **AI-Powered Import**: Import workouts from URLs (CrossFit.com, etc.) or plain text descriptions
+   - Import/export workouts as JSON
+   - Duplicate and delete workouts
 
 ### User Interface
 - Material Design 3 with teal/orange color scheme
@@ -113,7 +120,33 @@ flutter build windows --release
 
 # Web
 flutter build web --release
+
+# For GitHub Pages deployment with custom base path:
+flutter build web --release --base-href /crosswatch-app/
 ```
+
+### Web / PWA Deployment
+
+The app automatically deploys to GitHub Pages on every push to `main`. The workflow:
+
+1. Builds the web version with Flutter
+2. Deploys to GitHub Pages
+3. Available as a PWA at your GitHub Pages URL
+
+**Manual deployment:**
+```bash
+# Build for web
+flutter build web --release
+
+# Deploy to your hosting provider
+# Upload contents of build/web/ to your server
+```
+
+**PWA Features:**
+- Installable to home screen on mobile and desktop
+- Offline support with service worker
+- Full app experience in the browser
+- Responsive design for all screen sizes
 
 ## Project Structure
 
@@ -210,6 +243,10 @@ See `assets/workouts/` for complete examples.
 - **path_provider** `^2.1.1` - Access to file system directories
 - **path** `^1.8.3` - Path manipulation utilities
 - **file_picker** `^8.0.0` - Import/export file dialogs
+- **http** `^1.2.0` - HTTP requests for AI import
+- **html** `^0.15.4` - HTML parsing for web scraping
+- **flutter_secure_storage** `^9.0.0` - Encrypted API key storage
+- **google_generative_ai** `^0.4.6` - Gemini AI integration
 - **cupertino_icons** `^1.0.8` - iOS-style icons
 
 ### Dev Dependencies

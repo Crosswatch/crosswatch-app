@@ -252,6 +252,61 @@ class _HomeScreenState extends State<HomeScreen> {
     );
   }
 
+  void _showNewWorkoutMenu() {
+    showModalBottomSheet(
+      context: context,
+      builder: (context) => SafeArea(
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Padding(
+              padding: const EdgeInsets.all(16.0),
+              child: Text(
+                'Create New Workout',
+                style: Theme.of(
+                  context,
+                ).textTheme.titleLarge?.copyWith(fontWeight: FontWeight.bold),
+              ),
+            ),
+            ListTile(
+              leading: const Icon(Icons.edit),
+              title: const Text('Build Manually'),
+              subtitle: const Text('Create a workout step by step'),
+              onTap: () async {
+                Navigator.pop(context);
+                await Navigator.push(
+                  context,
+                  MaterialPageRoute(
+                    builder: (context) => const WorkoutBuilderScreen(),
+                  ),
+                );
+                _loadWorkouts();
+              },
+            ),
+            ListTile(
+              leading: const Icon(Icons.auto_awesome),
+              title: const Text('AI Import'),
+              subtitle: const Text('From URL or plain text description'),
+              onTap: () async {
+                Navigator.pop(context);
+                await _importWorkout();
+              },
+            ),
+            ListTile(
+              leading: const Icon(Icons.file_open),
+              title: const Text('Import from File'),
+              subtitle: const Text('Load a previously exported workout'),
+              onTap: () async {
+                Navigator.pop(context);
+                await _importWorkoutFromFile();
+              },
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
     return Scaffold(
@@ -259,35 +314,6 @@ class _HomeScreenState extends State<HomeScreen> {
         title: const Text('Crosswatch'),
         backgroundColor: Theme.of(context).colorScheme.inversePrimary,
         actions: [
-          PopupMenuButton<String>(
-            icon: const Icon(Icons.download),
-            tooltip: 'Import Workout',
-            onSelected: (value) async {
-              if (value == 'ai') {
-                await _importWorkout();
-              } else if (value == 'file') {
-                await _importWorkoutFromFile();
-              }
-            },
-            itemBuilder: (context) => [
-              const PopupMenuItem(
-                value: 'ai',
-                child: ListTile(
-                  leading: Icon(Icons.auto_awesome),
-                  title: Text('AI Import from URL/Text'),
-                  contentPadding: EdgeInsets.zero,
-                ),
-              ),
-              const PopupMenuItem(
-                value: 'file',
-                child: ListTile(
-                  leading: Icon(Icons.file_open),
-                  title: Text('Import from File'),
-                  contentPadding: EdgeInsets.zero,
-                ),
-              ),
-            ],
-          ),
           IconButton(
             icon: const Icon(Icons.settings),
             onPressed: () async {
@@ -303,15 +329,7 @@ class _HomeScreenState extends State<HomeScreen> {
       ),
       body: _buildBody(),
       floatingActionButton: FloatingActionButton.extended(
-        onPressed: () async {
-          await Navigator.push(
-            context,
-            MaterialPageRoute(
-              builder: (context) => const WorkoutBuilderScreen(),
-            ),
-          );
-          _loadWorkouts();
-        },
+        onPressed: _showNewWorkoutMenu,
         icon: const Icon(Icons.add),
         label: const Text('New Workout'),
       ),
