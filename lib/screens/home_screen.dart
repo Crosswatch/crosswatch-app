@@ -4,6 +4,8 @@ import '../services/workout_storage_service.dart';
 import 'workout_detail_screen.dart';
 import 'workout_timer_screen.dart';
 import 'workout_builder_screen.dart';
+import 'workout_import_screen.dart';
+import 'settings_screen.dart';
 
 class HomeScreen extends StatefulWidget {
   const HomeScreen({super.key});
@@ -45,15 +47,27 @@ class _HomeScreenState extends State<HomeScreen> {
   }
 
   Future<void> _importWorkout() async {
+    // Navigate to the new import screen
+    final workout = await Navigator.push<Workout>(
+      context,
+      MaterialPageRoute(builder: (context) => const WorkoutImportScreen()),
+    );
+
+    if (workout != null) {
+      _loadWorkouts();
+    }
+  }
+
+  Future<void> _importWorkoutFromFile() async {
     try {
       final workout = await _storageService.importWorkout();
       if (workout != null && mounted) {
-        ScaffoldMessenger.of(
-          context,
-        ).showSnackBar(SnackBar(
-          content: Text('Imported "${workout.name}"'),
-          backgroundColor: Colors.green,
-        ));
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('Imported "${workout.name}"'),
+            backgroundColor: Colors.green,
+          ),
+        );
         _loadWorkouts();
       }
     } catch (e) {
@@ -61,7 +75,9 @@ class _HomeScreenState extends State<HomeScreen> {
         // Check if it's a duplicate error
         final errorMessage = e.toString();
         if (errorMessage.contains('DUPLICATE:')) {
-          final workoutName = errorMessage.split('DUPLICATE:')[1].replaceAll('\'', '');
+          final workoutName = errorMessage
+              .split('DUPLICATE:')[1]
+              .replaceAll('\'', '');
           ScaffoldMessenger.of(context).showSnackBar(
             SnackBar(
               content: Text('Workout "$workoutName" already exists'),
@@ -243,15 +259,45 @@ class _HomeScreenState extends State<HomeScreen> {
         title: const Text('Crosswatch'),
         backgroundColor: Theme.of(context).colorScheme.inversePrimary,
         actions: [
-          IconButton(
-            icon: const Icon(Icons.file_download),
-            onPressed: _importWorkout,
+          PopupMenuButton<String>(
+            icon: const Icon(Icons.download),
             tooltip: 'Import Workout',
+            onSelected: (value) async {
+              if (value == 'ai') {
+                await _importWorkout();
+              } else if (value == 'file') {
+                await _importWorkoutFromFile();
+              }
+            },
+            itemBuilder: (context) => [
+              const PopupMenuItem(
+                value: 'ai',
+                child: ListTile(
+                  leading: Icon(Icons.auto_awesome),
+                  title: Text('AI Import from URL/Text'),
+                  contentPadding: EdgeInsets.zero,
+                ),
+              ),
+              const PopupMenuItem(
+                value: 'file',
+                child: ListTile(
+                  leading: Icon(Icons.file_open),
+                  title: Text('Import from File'),
+                  contentPadding: EdgeInsets.zero,
+                ),
+              ),
+            ],
           ),
           IconButton(
-            icon: const Icon(Icons.refresh),
-            onPressed: _loadWorkouts,
-            tooltip: 'Refresh',
+            icon: const Icon(Icons.settings),
+            onPressed: () async {
+              await Navigator.push(
+                context,
+                MaterialPageRoute(builder: (context) => const SettingsScreen()),
+              );
+              _loadWorkouts();
+            },
+            tooltip: 'Settings',
           ),
         ],
       ),
