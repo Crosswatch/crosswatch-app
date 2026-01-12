@@ -1,6 +1,7 @@
-import 'dart:io';
+import 'dart:io' if (dart.library.html) 'platform_stub.dart';
 import 'dart:convert';
 import 'dart:typed_data';
+import 'package:flutter/foundation.dart' show kIsWeb;
 import 'package:path_provider/path_provider.dart';
 import 'package:flutter/services.dart' show rootBundle;
 import 'package:file_picker/file_picker.dart';
@@ -13,6 +14,12 @@ class WorkoutStorageService {
   WorkoutStorageService._internal();
 
   Future<Directory> get _workoutsDirectory async {
+    if (kIsWeb) {
+      // On web, we can't use file system, so we'll use browser storage
+      // For now, throw an error - we'll handle this separately
+      throw UnsupportedError('File system not available on web');
+    }
+
     final appDir = await getApplicationDocumentsDirectory();
     final workoutsDir = Directory('${appDir.path}/crosswatch/workouts');
     if (!await workoutsDir.exists()) {
@@ -42,25 +49,27 @@ class WorkoutStorageService {
       }
     }
 
-    // Load user workouts from file system
-    try {
-      final dir = await _workoutsDirectory;
-      final files = dir
-          .listSync()
-          .where((entity) => entity is File && entity.path.endsWith('.json'))
-          .cast<File>();
+    // Load user workouts from file system (skip on web for now)
+    if (!kIsWeb) {
+      try {
+        final dir = await _workoutsDirectory;
+        final files = dir
+            .listSync()
+            .where((entity) => entity is File && entity.path.endsWith('.json'))
+            .cast<File>();
 
-      for (final file in files) {
-        try {
-          final jsonString = await file.readAsString();
-          final workout = Workout.fromJson(json.decode(jsonString));
-          workouts.add(workout);
-        } catch (e) {
-          print('Failed to load workout from ${file.path}: $e');
+        for (final file in files) {
+          try {
+            final jsonString = await file.readAsString();
+            final workout = Workout.fromJson(json.decode(jsonString));
+            workouts.add(workout);
+          } catch (e) {
+            print('Failed to load workout from ${file.path}: $e');
+          }
         }
+      } catch (e) {
+        print('Failed to load user workouts: $e');
       }
-    } catch (e) {
-      print('Failed to load user workouts: $e');
     }
 
     return workouts;
@@ -68,6 +77,12 @@ class WorkoutStorageService {
 
   /// Save a workout to the user directory
   Future<void> saveWorkout(Workout workout) async {
+    if (kIsWeb) {
+      // TODO: Implement web storage using localStorage or IndexedDB
+      print('Saving workouts on web is not yet implemented');
+      return;
+    }
+
     final dir = await _workoutsDirectory;
     final fileName = _sanitizeFileName(workout.name);
     final file = File('${dir.path}/$fileName.json');
@@ -78,6 +93,11 @@ class WorkoutStorageService {
 
   /// Delete a workout from the user directory
   Future<bool> deleteWorkout(String workoutName) async {
+    if (kIsWeb) {
+      // TODO: Implement web storage deletion
+      print('Deleting workouts on web is not yet implemented');
+      return false;
+    }
     try {
       final dir = await _workoutsDirectory;
       final fileName = _sanitizeFileName(workoutName);
@@ -141,11 +161,12 @@ class WorkoutStorageService {
 
       if (result != null && result.files.isNotEmpty) {
         String jsonString;
-        
+
         // Try to get file content - Android typically provides bytes, desktop provides path
         if (result.files.single.bytes != null) {
           // Mobile/Web: Use bytes
-          jsonString = utf8.decode(result.files.single.bytes!, allowMalformed: true);
+          jsonString =
+              utf8.decode(result.files.single.bytes!, allowMalformed: true);
         } else if (result.files.single.path != null) {
           // Desktop: Use path
           final file = File(result.files.single.path!);
@@ -153,13 +174,13 @@ class WorkoutStorageService {
         } else {
           throw Exception('Unable to read file');
         }
-        
+
         // Trim whitespace and remove any BOM characters
         jsonString = jsonString.trim();
         if (jsonString.startsWith('\uFEFF')) {
           jsonString = jsonString.substring(1);
         }
-        
+
         // Try to parse JSON
         final jsonData = json.decode(jsonString) as Map<String, dynamic>;
         final workout = Workout.fromJson(jsonData);
@@ -167,7 +188,7 @@ class WorkoutStorageService {
         // Check if workout already exists
         final existingWorkouts = await loadAllWorkouts();
         final isDuplicate = existingWorkouts.any((w) => w.name == workout.name);
-        
+
         if (isDuplicate) {
           throw Exception('DUPLICATE:${workout.name}');
         }

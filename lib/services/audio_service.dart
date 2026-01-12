@@ -1,4 +1,4 @@
-import 'dart:io';
+import 'dart:io' if (dart.library.html) 'platform_stub.dart';
 import 'package:flutter/foundation.dart' show kIsWeb;
 import 'package:flutter/services.dart' show rootBundle;
 import 'package:path_provider/path_provider.dart';
@@ -16,7 +16,7 @@ class AudioService {
   String? _completeFilePath;
   String? _countdownFilePath;
 
-  // For audioplayers method (Android, iOS, etc.)
+  // For audioplayers method (Android, iOS, Web, etc.)
   // Use a pool of players for overlapping sounds
   final List<AudioPlayer> _countdownPlayers = [];
   final List<AudioPlayer> _completePlayers = [];
@@ -24,7 +24,7 @@ class AudioService {
   int _completePlayerIndex = 0;
   static const int _playerPoolSize = 5; // Allow up to 5 overlapping sounds
   bool _useAudioPlayers = false;
-  
+
   // Keep sources ready for reuse
   Source? _completeSource;
   Source? _countdownSource;
@@ -32,8 +32,15 @@ class AudioService {
   /// Initialize audio service
   Future<void> initialize() async {
     try {
+      // Skip platform checks on web
+      if (kIsWeb) {
+        _useAudioPlayers = true;
+        await _initializeAudioPlayers();
+        return;
+      }
+
       // Determine which audio backend to use
-      if (Platform.isLinux && !kIsWeb) {
+      if (Platform.isLinux) {
         // Try Linux paplay method first
         _useAudioPlayers = !(await _initializeLinuxAudio());
         if (_useAudioPlayers) {
@@ -41,7 +48,7 @@ class AudioService {
           await _initializeAudioPlayers();
         }
       } else {
-        // Use audioplayers for Android, iOS, Windows, macOS, Web
+        // Use audioplayers for Android, iOS, Windows, macOS
         _useAudioPlayers = true;
         await _initializeAudioPlayers();
       }
@@ -53,6 +60,8 @@ class AudioService {
 
   /// Initialize Linux audio with paplay
   Future<bool> _initializeLinuxAudio() async {
+    if (kIsWeb) return false;
+
     try {
       // Check if paplay is available
       final result = await Process.run('which', ['paplay']);
@@ -88,62 +97,65 @@ class AudioService {
   /// Initialize audioplayers for cross-platform support
   Future<void> _initializeAudioPlayers() async {
     print('AudioService: Initializing audio players...');
-    
+
     // Prepare sources
     _completeSource = AssetSource('sounds/complete.oga');
     _countdownSource = AssetSource('sounds/countdown.oga');
-    
+
     // Create a pool of players for overlapping sounds
     for (int i = 0; i < _playerPoolSize; i++) {
       final countdownPlayer = AudioPlayer();
       final completePlayer = AudioPlayer();
-      
+
       await countdownPlayer.setPlayerMode(PlayerMode.lowLatency);
       await completePlayer.setPlayerMode(PlayerMode.lowLatency);
-      
+
       await countdownPlayer.setReleaseMode(ReleaseMode.stop);
       await completePlayer.setReleaseMode(ReleaseMode.stop);
-      
+
       await countdownPlayer.setVolume(1.0);
       await completePlayer.setVolume(1.0);
-      
-      // Configure audio context to mix with background audio without requesting focus
-      await countdownPlayer.setAudioContext(
-        AudioContext(
-          iOS: AudioContextIOS(
-            category: AVAudioSessionCategory.ambient,
-            options: {AVAudioSessionOptions.mixWithOthers},
+
+      // Configure audio context (skip on web as it's not fully supported)
+      if (!kIsWeb) {
+        // Configure audio context to mix with background audio without requesting focus
+        await countdownPlayer.setAudioContext(
+          AudioContext(
+            iOS: AudioContextIOS(
+              category: AVAudioSessionCategory.ambient,
+              options: {AVAudioSessionOptions.mixWithOthers},
+            ),
+            android: AudioContextAndroid(
+              isSpeakerphoneOn: false,
+              stayAwake: false,
+              contentType: AndroidContentType.sonification,
+              usageType: AndroidUsageType.game,
+              audioFocus: AndroidAudioFocus.none, // Don't request focus
+            ),
           ),
-          android: AudioContextAndroid(
-            isSpeakerphoneOn: false,
-            stayAwake: false,
-            contentType: AndroidContentType.sonification,
-            usageType: AndroidUsageType.game,
-            audioFocus: AndroidAudioFocus.none, // Don't request focus
+        );
+
+        await completePlayer.setAudioContext(
+          AudioContext(
+            iOS: AudioContextIOS(
+              category: AVAudioSessionCategory.ambient,
+              options: {AVAudioSessionOptions.mixWithOthers},
+            ),
+            android: AudioContextAndroid(
+              isSpeakerphoneOn: false,
+              stayAwake: false,
+              contentType: AndroidContentType.sonification,
+              usageType: AndroidUsageType.game,
+              audioFocus: AndroidAudioFocus.none, // Don't request focus
+            ),
           ),
-        ),
-      );
-      
-      await completePlayer.setAudioContext(
-        AudioContext(
-          iOS: AudioContextIOS(
-            category: AVAudioSessionCategory.ambient,
-            options: {AVAudioSessionOptions.mixWithOthers},
-          ),
-          android: AudioContextAndroid(
-            isSpeakerphoneOn: false,
-            stayAwake: false,
-            contentType: AndroidContentType.sonification,
-            usageType: AndroidUsageType.game,
-            audioFocus: AndroidAudioFocus.none, // Don't request focus
-          ),
-        ),
-      );
-      
+        );
+      }
+
       _countdownPlayers.add(countdownPlayer);
       _completePlayers.add(completePlayer);
     }
-    
+
     // Preload audio by playing at zero volume, then stopping
     // This ensures the first real play is instant
     print('AudioService: Preloading audio files...');
@@ -152,13 +164,13 @@ class AudioService {
     await Future.delayed(const Duration(milliseconds: 100));
     await _countdownPlayers[0].stop();
     await _countdownPlayers[0].setVolume(1.0);
-    
+
     await _completePlayers[0].setVolume(0.0);
     await _completePlayers[0].play(_completeSource!);
     await Future.delayed(const Duration(milliseconds: 100));
     await _completePlayers[0].stop();
     await _completePlayers[0].setVolume(1.0);
-    
+
     print('AudioService: Audio players initialized successfully');
   }
 
@@ -171,13 +183,13 @@ class AudioService {
         // Use round-robin player selection
         final player = _completePlayers[_completePlayerIndex];
         _completePlayerIndex = (_completePlayerIndex + 1) % _playerPoolSize;
-        
+
         // Stop first if already playing, then play
         if (player.state == PlayerState.playing) {
           await player.stop();
         }
         await player.play(_completeSource!);
-      } else {
+      } else if (!kIsWeb) {
         // Use paplay for Linux
         if (_completeFilePath != null) {
           await Process.run('paplay', [_completeFilePath!]).timeout(
@@ -202,16 +214,17 @@ class AudioService {
       if (_useAudioPlayers) {
         // Use round-robin player selection
         final player = _countdownPlayers[_countdownPlayerIndex];
-        print('AudioService: Playing countdown on player ${_countdownPlayerIndex}, state: ${player.state}');
+        print(
+            'AudioService: Playing countdown on player ${_countdownPlayerIndex}, state: ${player.state}');
         _countdownPlayerIndex = (_countdownPlayerIndex + 1) % _playerPoolSize;
-        
+
         // Stop first if already playing, then play
         if (player.state == PlayerState.playing) {
           await player.stop();
         }
         await player.play(_countdownSource!);
         print('AudioService: Countdown play() completed');
-      } else {
+      } else if (!kIsWeb) {
         // Use paplay for Linux
         if (_countdownFilePath != null) {
           await Process.run('paplay', [_countdownFilePath!]).timeout(

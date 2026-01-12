@@ -1,5 +1,8 @@
-import 'dart:io';
+import 'package:flutter/foundation.dart' show kIsWeb;
 import 'package:flutter_local_notifications/flutter_local_notifications.dart';
+
+// Use conditional import to avoid dart:io on web
+import 'dart:io' if (dart.library.html) 'platform_stub.dart';
 
 class NotificationService {
   static final NotificationService _instance = NotificationService._internal();
@@ -13,24 +16,30 @@ class NotificationService {
   Future<void> initialize() async {
     if (_initialized) return;
 
+    // Skip notifications on web
+    if (kIsWeb) {
+      _initialized = true;
+      return;
+    }
+
     // Platform-specific initialization
     InitializationSettings? initializationSettings;
 
-    if (Platform.isAndroid) {
+    if (!kIsWeb && Platform.isAndroid) {
       const androidSettings = AndroidInitializationSettings(
         '@mipmap/ic_launcher',
       );
       initializationSettings = const InitializationSettings(
         android: androidSettings,
       );
-    } else if (Platform.isIOS) {
+    } else if (!kIsWeb && Platform.isIOS) {
       const iosSettings = DarwinInitializationSettings(
         requestAlertPermission: true,
         requestBadgePermission: true,
         requestSoundPermission: true,
       );
       initializationSettings = const InitializationSettings(iOS: iosSettings);
-    } else if (Platform.isLinux) {
+    } else if (!kIsWeb && Platform.isLinux) {
       const linuxSettings = LinuxInitializationSettings(
         defaultActionName: 'Open workout',
       );
@@ -56,6 +65,7 @@ class NotificationService {
     required String description,
   }) async {
     if (!_initialized) await initialize();
+    if (kIsWeb) return;
 
     NotificationDetails? notificationDetails;
 
@@ -103,6 +113,7 @@ class NotificationService {
     required int secondsRemaining,
   }) async {
     if (!_initialized) await initialize();
+    if (kIsWeb) return;
 
     NotificationDetails? notificationDetails;
 
@@ -147,6 +158,7 @@ class NotificationService {
 
   Future<void> showWorkoutCompleteNotification() async {
     if (!_initialized) await initialize();
+    if (kIsWeb) return;
 
     NotificationDetails? notificationDetails;
 
