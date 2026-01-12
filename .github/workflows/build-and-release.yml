@@ -14,6 +14,7 @@ jobs:
     runs-on: ubuntu-latest
     outputs:
       version: ${{ steps.get_version.outputs.version }}
+      version_name: ${{ steps.get_version.outputs.version_name }}
       tag: ${{ steps.get_version.outputs.tag }}
     
     steps:
@@ -26,9 +27,12 @@ jobs:
         id: get_version
         run: |
           VERSION=$(grep '^version:' pubspec.yaml | sed 's/version: //' | tr -d '\r\n')
+          VERSION_NAME=$(echo $VERSION | cut -d'+' -f1)
           echo "version=$VERSION" >> $GITHUB_OUTPUT
-          echo "tag=v$VERSION" >> $GITHUB_OUTPUT
-          echo "Version: $VERSION"
+          echo "version_name=$VERSION_NAME" >> $GITHUB_OUTPUT
+          echo "tag=v$VERSION_NAME" >> $GITHUB_OUTPUT
+          echo "Full version: $VERSION"
+          echo "Display version: $VERSION_NAME"
       
       - name: Check if tag exists
         id: check_tag
@@ -78,20 +82,20 @@ jobs:
       
       - name: Rename artifacts
         run: |
-          cp build/app/outputs/flutter-apk/app-release.apk crosswatch-${{ needs.version.outputs.version }}-android.apk
-          cp build/app/outputs/bundle/release/app-release.aab crosswatch-${{ needs.version.outputs.version }}-android.aab
+          cp build/app/outputs/flutter-apk/app-release.apk crosswatch-${{ needs.version.outputs.version_name }}-android.apk
+          cp build/app/outputs/bundle/release/app-release.aab crosswatch-${{ needs.version.outputs.version_name }}-android.aab
       
       - name: Upload APK artifact
         uses: actions/upload-artifact@v4
         with:
           name: android-apk
-          path: crosswatch-${{ needs.version.outputs.version }}-android.apk
+          path: crosswatch-${{ needs.version.outputs.version_name }}-android.apk
       
       - name: Upload AAB artifact
         uses: actions/upload-artifact@v4
         with:
           name: android-aab
-          path: crosswatch-${{ needs.version.outputs.version }}-android.aab
+          path: crosswatch-${{ needs.version.outputs.version_name }}-android.aab
 
   build-linux:
     runs-on: ubuntu-latest
@@ -121,14 +125,14 @@ jobs:
       - name: Create tarball
         run: |
           cd build/linux/x64/release/bundle
-          tar -czf ../../../../../crosswatch-${{ needs.version.outputs.version }}-linux-x64.tar.gz *
+          tar -czf ../../../../../crosswatch-${{ needs.version.outputs.version_name }}-linux-x64.tar.gz *
           cd ../../../../../
       
       - name: Upload Linux artifact
         uses: actions/upload-artifact@v4
         with:
           name: linux-x64
-          path: crosswatch-${{ needs.version.outputs.version }}-linux-x64.tar.gz
+          path: crosswatch-${{ needs.version.outputs.version_name }}-linux-x64.tar.gz
 
   create-release:
     runs-on: ubuntu-latest
@@ -151,7 +155,7 @@ jobs:
         id: release_notes
         run: |
           cat << 'EOF' > release_notes.md
-          ## Crosswatch ${{ needs.version.outputs.version }}
+          ## Crosswatch ${{ needs.version.outputs.version_name }}
           
           ### 🎉 What's New
           
@@ -182,7 +186,8 @@ jobs:
           
           ### 📝 Release Details
           
-          - Version: ${{ needs.version.outputs.version }}
+          - Version: ${{ needs.version.outputs.version_name }}
+          - Build: ${{ needs.version.outputs.version }}
           - Commit: ${{ github.sha }}
           - Date: $(date -u +"%Y-%m-%d %H:%M:%S UTC")
           EOF
@@ -193,7 +198,7 @@ jobs:
         uses: softprops/action-gh-release@v1
         with:
           tag_name: ${{ needs.version.outputs.tag }}
-          name: Crosswatch ${{ needs.version.outputs.version }}
+          name: Crosswatch ${{ needs.version.outputs.version_name }}
           body_path: release_notes.md
           draft: false
           prerelease: false
