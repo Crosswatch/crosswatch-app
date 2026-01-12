@@ -5,6 +5,7 @@ import 'package:flutter/foundation.dart' show kIsWeb;
 import 'package:path_provider/path_provider.dart';
 import 'package:flutter/services.dart' show rootBundle;
 import 'package:file_picker/file_picker.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 import '../models/workout.dart';
 
 class WorkoutStorageService {
@@ -12,6 +13,8 @@ class WorkoutStorageService {
       WorkoutStorageService._internal();
   factory WorkoutStorageService() => _instance;
   WorkoutStorageService._internal();
+
+  static const String _webStorageKey = 'user_workouts';
 
   Future<Directory> get _workoutsDirectory async {
     if (kIsWeb) {
@@ -49,8 +52,26 @@ class WorkoutStorageService {
       }
     }
 
-    // Load user workouts from file system (skip on web for now)
-    if (!kIsWeb) {
+    // Load user workouts from storage
+    if (kIsWeb) {
+      // Load from localStorage on web
+      try {
+        final prefs = await SharedPreferences.getInstance();
+        final workoutsJson = prefs.getStringList(_webStorageKey) ?? [];
+
+        for (final jsonString in workoutsJson) {
+          try {
+            final workout = Workout.fromJson(json.decode(jsonString));
+            workouts.add(workout);
+          } catch (e) {
+            print('Failed to parse workout from localStorage: $e');
+          }
+        }
+      } catch (e) {
+        print('Failed to load user workouts from web storage: $e');
+      }
+    } else {
+      // Load from file system on native platforms
       try {
         final dir = await _workoutsDirectory;
         final files = dir
@@ -78,8 +99,37 @@ class WorkoutStorageService {
   /// Save a workout to the user directory
   Future<void> saveWorkout(Workout workout) async {
     if (kIsWeb) {
-      // TODO: Implement web storage using localStorage or IndexedDB
-      print('Saving workouts on web is not yet implemented');
+      // Save to localStorage on web
+      try {
+        final prefs = await SharedPreferences.getInstance();
+        final workoutsJson = prefs.getStringList(_webStorageKey) ?? [];
+
+        // Check if workout already exists (by name)
+        final existingIndex = workoutsJson.indexWhere((jsonString) {
+          try {
+            final existingWorkout = Workout.fromJson(json.decode(jsonString));
+            return existingWorkout.name == workout.name;
+          } catch (e) {
+            return false;
+          }
+        });
+
+        final workoutJson = json.encode(workout.toJson());
+
+        if (existingIndex >= 0) {
+          // Update existing workout
+          workoutsJson[existingIndex] = workoutJson;
+        } else {
+          // Add new workout
+          workoutsJson.add(workoutJson);
+        }
+
+        await prefs.setStringList(_webStorageKey, workoutsJson);
+        print('Workout saved to web storage: ${workout.name}');
+      } catch (e) {
+        print('Failed to save workout to web storage: $e');
+        rethrow;
+      }
       return;
     }
 
@@ -94,10 +144,33 @@ class WorkoutStorageService {
   /// Delete a workout from the user directory
   Future<bool> deleteWorkout(String workoutName) async {
     if (kIsWeb) {
-      // TODO: Implement web storage deletion
-      print('Deleting workouts on web is not yet implemented');
-      return false;
+      // Delete from localStorage on web
+      try {
+        final prefs = await SharedPreferences.getInstance();
+        final workoutsJson = prefs.getStringList(_webStorageKey) ?? [];
+
+        // Find and remove the workout
+        final updatedWorkouts = workoutsJson.where((jsonString) {
+          try {
+            final workout = Workout.fromJson(json.decode(jsonString));
+            return workout.name != workoutName;
+          } catch (e) {
+            return true; // Keep malformed entries for now
+          }
+        }).toList();
+
+        if (updatedWorkouts.length < workoutsJson.length) {
+          await prefs.setStringList(_webStorageKey, updatedWorkouts);
+          print('Workout deleted from web storage: $workoutName');
+          return true;
+        }
+        return false;
+      } catch (e) {
+        print('Failed to delete workout from web storage: $e');
+        return false;
+      }
     }
+
     try {
       final dir = await _workoutsDirectory;
       final fileName = _sanitizeFileName(workoutName);
